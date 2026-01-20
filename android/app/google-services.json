@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "724450359732",
+    "project_id": "testnote-mvp",
+    "storage_bucket": "testnote-mvp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:724450359732:android:c843381f8f545678d6dae1",
+        "android_client_info": {
+          "package_name": "com.example.testnote_mvp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBOuTJKyTk9fEQ2cqhkvp1ICAv-CjygLWc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
