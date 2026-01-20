@@ -23,25 +23,41 @@ class TestRepository {
             .toList());
   }
 
-  Future<void> addTest({
+  /// ✅ docRef を返す（docId を使ってStorageパスを作る）
+  Future<DocumentReference<Map<String, dynamic>>> addTest({
     required String uid,
     required int grade,
     required String subject,
     required String testName,
-    String? unitTag, // ✅ これを追加
+    String? unitTag,
     int? score,
     String? comment,
   }) async {
-    await _col.add({
+    final ref = await _col.add({
       'uid': uid,
       'grade': grade,
       'subject': subject,
       'testName': testName,
-      'unitTag': unitTag, // ✅ これを追加
+      'unitTag': unitTag,
       'score': score,
       'comment': comment,
       'createdAtClient': DateTime.now().millisecondsSinceEpoch,
       'createdAt': FieldValue.serverTimestamp(),
+      // 画像URLは後で update する
+      'photoTitleUrl': null,
+      'photoFullUrl': null,
+    });
+    return ref;
+  }
+
+  Future<void> attachPhotos({
+    required String docId,
+    required String? photoTitleUrl,
+    required String? photoFullUrl,
+  }) async {
+    await _col.doc(docId).update({
+      'photoTitleUrl': photoTitleUrl,
+      'photoFullUrl': photoFullUrl,
     });
   }
 }
