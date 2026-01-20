@@ -15,6 +15,11 @@ class TestListPage extends StatefulWidget {
 class _TestListPageState extends State<TestListPage> {
   final repo = TestRepository();
 
+  // ✅ 前回の選択を保持（アプリ起動中）
+  int lastGrade = 2;
+  String lastSubject = '算数';
+  String? lastUnitTag;
+
   Future<String> _ensureAnonUid() async {
     final auth = FirebaseAuth.instance;
     final current = auth.currentUser;
@@ -28,7 +33,7 @@ class _TestListPageState extends State<TestListPage> {
     final dt = DateTime.fromMillisecondsSinceEpoch(ms);
     String two(int v) => v.toString().padLeft(2, '0');
     return '${dt.month}/${two(dt.day)} ${two(dt.hour)}:${two(dt.minute)}';
-    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,11 +54,30 @@ class _TestListPageState extends State<TestListPage> {
               IconButton(
                 icon: const Icon(Icons.add),
                 onPressed: () async {
-                  await Navigator.of(context).push(
+                  final result = await Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => TestRegisterPage(uid: uid, repo: repo),
+                      builder: (_) => TestRegisterPage(
+                        uid: uid,
+                        repo: repo,
+                        initialGrade: lastGrade,
+                        initialSubject: lastSubject,
+                        initialUnitTag: lastUnitTag,
+                      ),
                     ),
                   );
+
+                  // ✅ 登録画面から返ってきた前回選択を保持
+                  if (result is Map) {
+                    setState(() {
+                      lastGrade = (result['grade'] is int)
+                          ? result['grade'] as int
+                          : lastGrade;
+                      lastSubject = (result['subject']?.toString() ?? lastSubject);
+                      lastUnitTag = result['unitTag'] == null
+                          ? null
+                          : result['unitTag'].toString();
+                    });
+                  }
                 },
               ),
             ],
@@ -64,13 +88,9 @@ class _TestListPageState extends State<TestListPage> {
               if (s.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
-
               if (s.hasError) {
                 return Center(
-                  child: Text(
-                    '読み込みエラー\n${s.error}',
-                    textAlign: TextAlign.center,
-                  ),
+                  child: Text('読み込みエラー\n${s.error}', textAlign: TextAlign.center),
                 );
               }
 
@@ -99,7 +119,8 @@ class _TestListPageState extends State<TestListPage> {
 
                   return ListTile(
                     title: Text('$gradeText｜${t.subject}｜$unit｜${t.testName}'),
-                    subtitle: Text(dateText.isEmpty ? scoreText : '$scoreText  ・  $dateText'),
+                    subtitle:
+                        Text(dateText.isEmpty ? scoreText : '$scoreText  ・  $dateText'),
                     trailing: const Icon(Icons.chevron_right),
                   );
                 },
