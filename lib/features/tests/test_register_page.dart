@@ -6,10 +6,18 @@ class TestRegisterPage extends StatefulWidget {
     super.key,
     required this.uid,
     required this.repo,
+    required this.initialGrade,
+    required this.initialSubject,
+    required this.initialUnitTag,
   });
 
   final String uid;
   final TestRepository repo;
+
+  // ✅ 前回値（連続登録用）
+  final int initialGrade;
+  final String initialSubject;
+  final String? initialUnitTag;
 
   @override
   State<TestRegisterPage> createState() => _TestRegisterPageState();
@@ -22,10 +30,10 @@ class _TestRegisterPageState extends State<TestRegisterPage> {
   final _scoreCtrl = TextEditingController();
   final _commentCtrl = TextEditingController();
 
-  int grade = 2;
-  String subject = '算数';
+  late int grade;
+  late String subject;
 
-  /// ✅ 単元タグ（選択）
+  /// 単元タグ
   String? unitTag;
 
   bool useScore = true;
@@ -34,17 +42,10 @@ class _TestRegisterPageState extends State<TestRegisterPage> {
   final subjects = const ['算数', '国語', '理科', '社会'];
   final grades = const [1, 2, 3, 4, 5, 6];
 
-  // ✅ 学年×教科で候補が変わる単元セット（まずはMVP用の粒度）
+  // 学年×教科の単元候補（MVP）
   final Map<String, List<String>> unitOptions = const {
     // --- 算数 ---
-    '1_算数': [
-      'たし算',
-      'ひき算',
-      'くらべる',
-      '時計',
-      '図形',
-      '文章題',
-    ],
+    '1_算数': ['たし算', 'ひき算', 'くらべる', '時計', '図形', '文章題'],
     '2_算数': [
       'たし算(くり上がり)',
       'ひき算(くり下がり)',
@@ -55,42 +56,10 @@ class _TestRegisterPageState extends State<TestRegisterPage> {
       '図形',
       '文章題',
     ],
-    '3_算数': [
-      'わり算',
-      '大きい数',
-      '小数',
-      '分数',
-      '円と球',
-      '重さ',
-      '文章題',
-    ],
-    '4_算数': [
-      'わり算(筆算)',
-      '小数',
-      '分数',
-      '面積',
-      '角度',
-      '折れ線グラフ',
-      '文章題',
-    ],
-    '5_算数': [
-      '整数',
-      '小数',
-      '分数',
-      '割合',
-      '面積・体積',
-      '速さ',
-      'グラフ',
-      '文章題',
-    ],
-    '6_算数': [
-      '分数',
-      '比例・反比例',
-      '円の面積',
-      '立体',
-      '資料の調べ方',
-      '文章題',
-    ],
+    '3_算数': ['わり算', '大きい数', '小数', '分数', '円と球', '重さ', '文章題'],
+    '4_算数': ['わり算(筆算)', '小数', '分数', '面積', '角度', '折れ線グラフ', '文章題'],
+    '5_算数': ['整数', '小数', '分数', '割合', '面積・体積', '速さ', 'グラフ', '文章題'],
+    '6_算数': ['分数', '比例・反比例', '円の面積', '立体', '資料の調べ方', '文章題'],
 
     // --- 国語 ---
     '1_国語': ['漢字', 'ひらがな・カタカナ', 'ことば', '読解(物語)', '読解(説明文)', '作文'],
@@ -118,22 +87,27 @@ class _TestRegisterPageState extends State<TestRegisterPage> {
     return unitOptions[key] ?? const ['（単元なし）'];
   }
 
-  void _resetUnitIfNeeded() {
+  void _ensureUnitValid() {
     final options = _currentUnitOptions();
-    if (options.isEmpty) {
+    if (options.isEmpty || options.first == '（単元なし）') {
       unitTag = null;
       return;
     }
     if (unitTag == null || !options.contains(unitTag)) {
-      // 候補にない場合は先頭に合わせる（単元なしなら null）
-      unitTag = options.first == '（単元なし）' ? null : options.first;
+      unitTag = options.first;
     }
   }
 
   @override
   void initState() {
     super.initState();
-    _resetUnitIfNeeded();
+
+    // ✅ 前回の値を引き継ぐ
+    grade = widget.initialGrade;
+    subject = widget.initialSubject;
+    unitTag = widget.initialUnitTag;
+
+    _ensureUnitValid();
   }
 
   @override
@@ -145,6 +119,7 @@ class _TestRegisterPageState extends State<TestRegisterPage> {
   }
 
   Future<void> _save() async {
+    if (saving) return; // 二重送信防止
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => saving = true);
@@ -164,14 +139,30 @@ class _TestRegisterPageState extends State<TestRegisterPage> {
         uid: widget.uid,
         grade: grade,
         subject: subject,
-        unitTag: unitTag, // ✅保存
+        unitTag: unitTag,
         testName: testName,
         score: score,
         comment: comment,
       );
 
       if (!mounted) return;
-      Navigator.of(context).pop();
+
+      // ✅ 保存完了を親に見せる（安心）
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('保存しました')),
+      );
+
+      // ✅ 呼び出し元へ「今回の選択」を返す（連続登録用）
+      Navigator.of(context).pop({
+        'grade': grade,
+        'subject': subject,
+        'unitTag': unitTag,
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('保存に失敗しました: $e')),
+      );
     } finally {
       if (mounted) setState(() => saving = false);
     }
@@ -180,7 +171,7 @@ class _TestRegisterPageState extends State<TestRegisterPage> {
   @override
   Widget build(BuildContext context) {
     final unitList = _currentUnitOptions();
-    _resetUnitIfNeeded();
+    _ensureUnitValid();
 
     return Scaffold(
       appBar: AppBar(title: const Text('テストを追加')),
@@ -202,8 +193,8 @@ class _TestRegisterPageState extends State<TestRegisterPage> {
                     .toList(),
                 onChanged: (v) {
                   setState(() {
-                    grade = v ?? 2;
-                    _resetUnitIfNeeded();
+                    grade = v ?? grade;
+                    _ensureUnitValid();
                   });
                 },
               ),
@@ -218,8 +209,8 @@ class _TestRegisterPageState extends State<TestRegisterPage> {
                     .toList(),
                 onChanged: (v) {
                   setState(() {
-                    subject = v ?? '算数';
-                    _resetUnitIfNeeded();
+                    subject = v ?? subject;
+                    _ensureUnitValid();
                   });
                 },
               ),
@@ -227,19 +218,19 @@ class _TestRegisterPageState extends State<TestRegisterPage> {
 
               const Text('単元（タグ）'),
               const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                value: unitTag ?? (unitList.first == '（単元なし）' ? null : unitList.first),
-                items: unitList.first == '（単元なし）'
-                    ? const []
-                    : unitList
-                        .map((u) => DropdownMenuItem(value: u, child: Text(u)))
-                        .toList(),
-                onChanged: (v) => setState(() => unitTag = v),
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
+              if (unitList.isEmpty || unitList.first == '（単元なし）')
+                const Text('この学年・教科には単元候補がまだありません')
+              else
+                DropdownButtonFormField<String>(
+                  value: unitTag,
+                  items: unitList
+                      .map((u) => DropdownMenuItem(value: u, child: Text(u)))
+                      .toList(),
+                  onChanged: (v) => setState(() => unitTag = v),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-                hint: const Text('単元を選択'),
-              ),
               const SizedBox(height: 16),
 
               const Text('テスト名'),
@@ -264,8 +255,8 @@ class _TestRegisterPageState extends State<TestRegisterPage> {
                 value: useScore,
                 onChanged: (v) => setState(() => useScore = v),
               ),
-
               const SizedBox(height: 8),
+
               if (useScore) ...[
                 const Text('点数'),
                 const SizedBox(height: 8),
