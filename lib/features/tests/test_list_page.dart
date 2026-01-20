@@ -15,7 +15,6 @@ class TestListPage extends StatefulWidget {
 class _TestListPageState extends State<TestListPage> {
   final repo = TestRepository();
 
-  // ✅ 前回の選択を保持（アプリ起動中）
   int lastGrade = 2;
   String lastSubject = '算数';
   String? lastUnitTag;
@@ -34,6 +33,117 @@ class _TestListPageState extends State<TestListPage> {
     String two(int v) => v.toString().padLeft(2, '0');
     return '${dt.month}/${two(dt.day)} ${two(dt.hour)}:${two(dt.minute)}';
   }
+
+  void _openPhotoViewer(BuildContext context, TestRecord t) {
+    final url = (t.photoFullUrl?.isNotEmpty == true)
+        ? t.photoFullUrl!
+        : (t.photoTitleUrl?.isNotEmpty == true ? t.photoTitleUrl! : null);
+
+    if (url == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('写真がありません')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (_) {
+        return Dialog(
+          child: InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 4,
+            child: Image.network(
+              url,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('画像の読み込みに失敗しました'),
+              ),
+              loadingBuilder: (context, child, progress) {
+                if (progress == null) return child;
+                return const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _thumb(TestRecord t) {
+    final thumbUrl =
+        (t.photoTitleUrl?.isNotEmpty == true) ? t.photoTitleUrl! : null;
+
+    if (thumbUrl == null) {
+      return Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: Colors.black12,
+        ),
+        child: const Icon(Icons.description_outlined),
+      );
+    }
+    
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Image.network(
+        thumbUrl,
+        width: 56,
+        height: 56,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.black12,
+          ),
+          child: const Icon(Icons.broken_image_outlined),
+        ),
+        loadingBuilder: (context, child, progress) {
+          if (progress == null) return child;
+          return Container(
+            width: 56,
+            height: 56,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.black12,
+            ),
+            child: const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        },
+      ),
+    );
+  }
+  IconData _subjectIcon(String subject) {
+  switch (subject) {
+    case '国語':
+      return Icons.menu_book;
+    case '算数':
+      return Icons.calculate;
+    case '理科':
+      return Icons.science;
+    case '社会':
+      return Icons.public;
+    case '英語':
+      return Icons.language;
+    default:
+      return Icons.description;
+  }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -66,13 +176,13 @@ class _TestListPageState extends State<TestListPage> {
                     ),
                   );
 
-                  // ✅ 登録画面から返ってきた前回選択を保持
                   if (result is Map) {
                     setState(() {
                       lastGrade = (result['grade'] is int)
                           ? result['grade'] as int
                           : lastGrade;
-                      lastSubject = (result['subject']?.toString() ?? lastSubject);
+                      lastSubject =
+                          (result['subject']?.toString() ?? lastSubject);
                       lastUnitTag = result['unitTag'] == null
                           ? null
                           : result['unitTag'].toString();
@@ -90,14 +200,16 @@ class _TestListPageState extends State<TestListPage> {
               }
               if (s.hasError) {
                 return Center(
-                  child: Text('読み込みエラー\n${s.error}', textAlign: TextAlign.center),
+                  child:
+                      Text('読み込みエラー\n${s.error}', textAlign: TextAlign.center),
                 );
               }
 
               final items = s.data ?? [];
               if (items.isEmpty) {
                 return const Center(
-                  child: Text('まだ記録がありません。\n右上の＋から追加できます。', textAlign: TextAlign.center),
+                  child: Text('まだ記録がありません。\n右上の＋から追加できます。',
+                      textAlign: TextAlign.center),
                 );
               }
 
@@ -117,12 +229,25 @@ class _TestListPageState extends State<TestListPage> {
                       : '（未設定）';
                   final dateText = _formatDateFromClientMs(t.createdAtClient);
 
-                  return ListTile(
-                    title: Text('$gradeText｜${t.subject}｜$unit｜${t.testName}'),
-                    subtitle:
-                        Text(dateText.isEmpty ? scoreText : '$scoreText  ・  $dateText'),
-                    trailing: const Icon(Icons.chevron_right),
-                  );
+                  final hasPhoto =
+    (t.photoTitleUrl?.isNotEmpty ?? false) || (t.photoFullUrl?.isNotEmpty ?? false);
+
+return ListTile(
+  leading: CircleAvatar(
+    child: Icon(_subjectIcon(t.subject)),
+  ),
+  title: Text('$gradeText｜${t.subject}｜$unit｜${t.testName}'),
+  subtitle: Text(dateText.isEmpty ? scoreText : '$scoreText  ・  $dateText'),
+  trailing: hasPhoto
+      ? IconButton(
+          icon: const Icon(Icons.image_outlined),
+          onPressed: () => _openPhotoViewer(context, t),
+        )
+      : null,
+  onTap: () {},
+);
+
+
                 },
               );
             },

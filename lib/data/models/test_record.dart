@@ -9,18 +9,22 @@ class TestRecord {
 
   final String subject;
 
-  /// ✅ 単元タグ（例：かけ算 / ひき算(くり下がり) / 天気 など）
+  /// 単元タグ
   final String? unitTag;
 
   final String testName;
   final int? score;
   final String? comment;
 
-  /// サーバー時刻（確定は少し遅れる）
+  /// サーバー時刻
   final DateTime? createdAt;
 
-  /// 並び順用（必ず即時に入る）
+  /// 並び順用（即時）
   final int? createdAtClient;
+
+  /// ✅ 写真URL（StorageのDownload URL）
+  final String? photoTitleUrl;
+  final String? photoFullUrl;
 
   TestRecord({
     required this.id,
@@ -33,36 +37,41 @@ class TestRecord {
     this.comment,
     this.createdAt,
     this.createdAtClient,
+    this.photoTitleUrl,
+    this.photoFullUrl,
   });
 
   static TestRecord fromDoc(String id, Map<String, dynamic> data) {
-    // serverTimestamp の安全な変換
     DateTime? createdAt;
     final rawCreatedAt = data['createdAt'];
     if (rawCreatedAt is Timestamp) {
       createdAt = rawCreatedAt.toDate();
     }
 
-    // score は int / String どちらでも受ける
     final rawScore = data['score'];
     final int? score = rawScore is int
         ? rawScore
         : int.tryParse((rawScore ?? '').toString());
 
-    // createdAtClient
     final rawClientAt = data['createdAtClient'];
     final int? createdAtClient = rawClientAt is int
         ? rawClientAt
         : int.tryParse((rawClientAt ?? '').toString());
 
-    // grade
     final rawGrade = data['grade'];
     final int? grade =
         rawGrade is int ? rawGrade : int.tryParse((rawGrade ?? '').toString());
 
-    // unitTag
     final String? unitTag =
         data['unitTag'] == null ? null : data['unitTag'].toString();
+
+    final String? photoTitleUrl = data['photoTitleUrl'] == null
+        ? null
+        : data['photoTitleUrl'].toString();
+
+    final String? photoFullUrl = data['photoFullUrl'] == null
+        ? null
+        : data['photoFullUrl'].toString();
 
     return TestRecord(
       id: id,
@@ -75,6 +84,8 @@ class TestRecord {
       comment: data['comment'] == null ? null : data['comment'].toString(),
       createdAt: createdAt,
       createdAtClient: createdAtClient,
+      photoTitleUrl: photoTitleUrl,
+      photoFullUrl: photoFullUrl,
     );
   }
 }
